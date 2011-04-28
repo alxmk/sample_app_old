@@ -4,8 +4,12 @@ class UsersController < ApplicationController
   before_filter :admin_user,   :only => :destroy
   
   def new
-    @user = User.new
-    @title = "Sign up"
+    if current_user.nil?
+      @user = User.new
+      @title = "Sign up"
+    else
+      redirect_to(root_path)
+    end
   end
   
   def show
@@ -14,16 +18,20 @@ class UsersController < ApplicationController
   end
   
   def create
-    @user = User.new(params[:user])
-    if @user.save
-      sign_in @user
-      flash[:success] = "Welcome to the Sample App!"
-      redirect_to @user
+    if current_user.nil?
+      @user = User.new(params[:user])
+      if @user.save
+        sign_in @user
+        flash[:success] = "Welcome to the Sample App!"
+        redirect_to @user
+      else
+        @title = "Sign up"
+        @user.password = ""
+        @user.password_confirmation = ""
+        render 'new'
+      end
     else
-      @title = "Sign up"
-      @user.password = ""
-      @user.password_confirmation = ""
-      render 'new'
+      redirect_to(root_path)
     end
   end
   
@@ -47,8 +55,13 @@ class UsersController < ApplicationController
   end
   
   def destroy
-    User.find(params[:id]).destroy
-    flash[:success] = "User destroyed."
+    user = User.find(params[:id])
+    if user.admin?
+      flash[:error] = "Cannot destroy yourself."
+    else
+      user.destroy
+      flash[:success] = "User destroyed."
+    end
     redirect_to users_path
   end
   
